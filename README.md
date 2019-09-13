@@ -1,3 +1,5 @@
+# *Note on current work*
+Currently there is a bug, which I will improve in the next days. 
 # Inpainting-using-Context-Encoder-in-Generative-Adversarial-Network-V2
 This repository contains an inpainting approach with context encoder in a Generative Adversarial Network.
 In this project I use a different pre- and post-processing than in the [first version](https://github.com/StevenCyb/Inpainting-using-Context-Encoder-in-Generative-Adversarial-Network).
