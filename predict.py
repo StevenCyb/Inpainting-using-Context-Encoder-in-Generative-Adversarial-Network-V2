@@ -10,7 +10,7 @@ ap.add_argument("-i", "--image", required=True, help="Path to the image.")
 ap.add_argument("-m", "--mask", required=True, help="Path to the mask.")
 ap.add_argument("-o", "--output", required=True, help="Path to save prediction.")
 ap.add_argument("-w", "--weights", required=False, default='./weights/weights.ckpt', help="Path to the weights (default='./weights/weights.ckpt').")
-ap.add_argument("-br", "--border_ratio", required=False, type=float, default=0.5, help="Ratio to expand the roi (default=0.5).")
+ap.add_argument("-br", "--border_ratio", required=False, type=float, default=1.0, help="Ratio to expand the roi (default=1.0).")
 args = vars(ap.parse_args())
 
 # Verify the passed parameters
@@ -20,8 +20,8 @@ if not os.path.isfile(args["image"]):
     raise Exception("Path to image is invalid.")
 if not os.path.isfile(args["mask"]):
     raise Exception("Path to mask is invalid.")
-if not isinstance(args["border_ratio"], float) or (args["border_ratio"] + args["max_rectangle_ratio"]) > 1.0:
-    raise Exception("Border-Ratio has an invalid value. Must be a float number and together with max_rectangle_ratio smaller than 1.0.")
+if not isinstance(args["border_ratio"], float) or args["border_ratio"] > 1.0:
+    raise Exception("Border-Ratio has an invalid value. Must be a float number and smaller than 1.0.")
 
 # Load the image to inpaint
 image = cv2.imread(args["image"], 3)

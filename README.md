@@ -1,5 +1,3 @@
-# *Note on current work*
-Currently there is a bug, which I will improve in the next days. 
 # Inpainting-using-Context-Encoder-in-Generative-Adversarial-Network-V2
 This repository contains an inpainting approach with context encoder in a Generative Adversarial Network.
 In this project I use a different pre- and post-processing than in the [first version](https://github.com/StevenCyb/Inpainting-using-Context-Encoder-in-Generative-Adversarial-Network).
@@ -27,7 +25,8 @@ The example commands are based on those used in the previously mentioned evaluat
 In both cases you can get more information about available arguments by using the argument `-h`.
 ### Run Train
 To run training on you own dataset you need to first copy the training images into the directory `training`.
-I recommend cropping the images so that only the area the context-encoder should learn is included.
+I recommend cropping the images so that only the area the context-encoder should learn is included, as the following figure shows.
+![Perfect-Cut](/media/perfect_cut.png)
 Afterwards you can start the training with the following command. In this case the parameter `-mi` indicates that the training should be aborted from an average MSE of 60. If this parameter is not specified, then the parameter for the training iterations will be used instead.
 `-mirr` defines the minimum and `-marr` the maximum size of the randomly generated masks. Note that `-marr` and the extension of the ROI (parameter `-br`) together may not be greater than `1.0`.
 ```

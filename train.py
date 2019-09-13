@@ -13,8 +13,8 @@ ap.add_argument("-sit", "--saving_iterations", required=False, type=int, default
 ap.add_argument("-c", "--checkpoint", required=False, default='', help="Continue with checkpoint from [...].")
 ap.add_argument("-mi", "--mse_interrupt", required=False, type=int, default=9999999, help="MSE for generator prediction to interrupt (default=not_used).")
 ap.add_argument("-mirr", "--min_rectangle_ratio", required=False, type=float, default=0.1, help="Min. mask-rectangle size default (default=0.1).")
-ap.add_argument("-marr", "--max_rectangle_ratio", required=False, type=float, default=0.5, help="Max. mask-rectangle size default (default=0.1).")
-ap.add_argument("-br", "--border_ratio", required=False, type=float, default=0.5, help="Ratio to expand the roi (default=0.5).")
+ap.add_argument("-marr", "--max_rectangle_ratio", required=False, type=float, default=0.33, help="Max. mask-rectangle size default (default=0.1).")
+ap.add_argument("-br", "--border_ratio", required=False, type=float, default=1.0, help="Ratio to expand the roi (default=1.0).")
 args = vars(ap.parse_args())
 
 # Verify the passed parameters
@@ -34,7 +34,7 @@ if not isinstance(args["min_rectangle_ratio"], float):
     raise Exception("Min. mask-rectangle has an invalid value. Must be a float number smaller than max_rectangle_ratio.")
 if not isinstance(args["max_rectangle_ratio"], float) or args["max_rectangle_ratio"] < args["min_rectangle_ratio"]:
     raise Exception("Max. mask-rectangle has an invalid value. Must be a float number and bigger than min_rectangle_ratio and together with border_ratio smaller than 1.0.")
-if not isinstance(args["border_ratio"], float) or (args["border_ratio"] + args["max_rectangle_ratio"]) > 1.0:
+if not isinstance(args["border_ratio"], float) or ((args["border_ratio"] * args["max_rectangle_ratio"] * 2) + args["max_rectangle_ratio"]) > 1.0:
     raise Exception("Border-Ratio has an invalid value. Must be a float number and together with max_rectangle_ratio smaller than 1.0.")
 
 # Load the training images with has the extension .jpg and .png.

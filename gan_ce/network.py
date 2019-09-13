@@ -81,7 +81,7 @@ class Network:
             x = nu._leaky_relu(nu._batch_norm(nu._conv2d_transpose(x, "conv_trans3", filters=128, kernel_size=4, strides=2, padding="same"), "conv_trans3", is_training=self.is_training))
             x = nu._leaky_relu(nu._batch_norm(nu._conv2d_transpose(x, "conv_trans4", filters=64, kernel_size=4, strides=2, padding="same"), "conv_trans4", is_training=self.is_training))
             ## Output
-            x = tf.nn.tanh(nu._leaky_relu(nu._conv2d(x, "conv_out", filters=3, kernel_size=4, strides=1, padding="same")))
+            x = tf.nn.tanh(nu._conv2d(x, "conv_out", filters=3, kernel_size=4, strides=1, padding="same"))
             return x
 
     def create_discriminator(self, input,  reuse=None):
@@ -104,7 +104,7 @@ class Network:
             mse += err
         return mse / batch_size
 
-    def do_preprocessing(self, input_image=None, gt_image=None, mask=None, border_ratio=0.5, net_input_size=(256, 256), net_output_size=(128, 128)):
+    def do_preprocessing(self, input_image=None, gt_image=None, mask=None, border_ratio=1.0, net_input_size=(256, 256), net_output_size=(128, 128)):
         # Clean values
         mask[np.where((mask<=[125,125,125]).all(axis=2))] = 0
         mask[np.where((mask>[125,125,125]).all(axis=2))] = 255
@@ -131,7 +131,7 @@ class Network:
                         [x + w, y + h] # Bottom-right corner
                     ],
                     [gt_image], # Ground through
-                    [(cv2.resize(border_imge[y - int(h * border_ratio) + border: y + h + int(h * border_ratio) + border, x - int(w * border_ratio) + border: x + w + int(w * border_ratio) + border], net_input_size) / 127.5) - 1.0]# Network input
+                    [(cv2.resize(border_imge[y - int(h * border_ratio) + border: y + h + int(h * border_ratio) + border, x - int(w * border_ratio) + border: x + w + int(w * border_ratio) + border], net_input_size) / 127.5) - 1.0] # Network input
                 ]
             )
         return inputs
@@ -141,7 +141,7 @@ class Network:
         image[roi[0][1]: roi[1][1], roi[0][0]: roi[1][0]] = ((prediction_image + 1) * 127.5).astype(np.uint8)
         return image
 
-    def train(self, images=[], iterations=50000, batch_size=1, weights_path='./weights/weights.ckpt.index', saving_iterations=1000, mse_interrupt=9999999, min_rectangle_ratio=0.1, max_rectangle_ratio=0.4, border_ratio=0.5):
+    def train(self, images=[], iterations=50000, batch_size=1, weights_path='./weights/weights.ckpt.index', saving_iterations=1000, mse_interrupt=9999999, min_rectangle_ratio=0.1, max_rectangle_ratio=0.3, border_ratio=1.0):
         saver = tf.train.Saver()
         iteration = 0
         while iteration <= iterations or mse_interrupt <= self.avg_mse:
@@ -159,7 +159,7 @@ class Network:
                 random_mask = np.zeros([images[index].shape[0], images[index].shape[1]])
                 random_mask = np.dstack((random_mask, random_mask, random_mask)).astype(np.uint8)
                 w, h = np.random.randint(int(images[index].shape[1] * min_rectangle_ratio), int(images[index].shape[1] * max_rectangle_ratio)), np.random.randint(int(images[index].shape[0] * min_rectangle_ratio), int(images[index].shape[0] * max_rectangle_ratio))
-                x, y = np.random.randint(w * border_ratio, int(images[index].shape[1] - (w * (1 + border_ratio)))), np.random.randint(h * border_ratio, int(images[index].shape[0] - (h * (1 + border_ratio))))
+                x, y = np.random.randint(w * border_ratio, int(images[index].shape[1] - (w * border_ratio * 2))), np.random.randint(h * border_ratio, int(images[index].shape[0] - (h * border_ratio * 2)))
                 cv2.rectangle(random_mask, (x, y), (x + w, y + h), (255, 255, 255), -1)
                 # Preprocess input
                 processed_data = self.do_preprocessing(input_image=deepcopy(images[index]), gt_image=deepcopy(images[index]), mask=random_mask, border_ratio=border_ratio, net_input_size=self.net_input_size, net_output_size=self.net_output_size)
@@ -193,9 +193,9 @@ class Network:
             # Increase iteration counter
             iteration += 1
 
-    def predict(self, image, mask, border_ratio=0.5):
+    def predict(self, image, mask, border_ratio=1.0):
         # Preprocess input
-        processed_data = self.do_preprocessing(input_image=deepcopy(image), mask=mask, border_ratio=0.5, net_input_size=self.net_input_size, net_output_size=self.net_output_size)
+        processed_data = self.do_preprocessing(input_image=deepcopy(image), mask=mask, border_ratio=border_ratio, net_input_size=self.net_input_size, net_output_size=self.net_output_size)
         if len(processed_data) > 0:
             # Create a batch with the masked image 
             input_image_masked = np.zeros([len(processed_data), self.net_input_size[0], self.net_input_size[1], 3])
