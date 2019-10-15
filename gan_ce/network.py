@@ -8,10 +8,11 @@ from tensorflow.contrib.layers import apply_regularization, l2_regularizer
 import gan_ce.network_utils as nu
 
 class Network:
-    def __init__(self, epsilon=1e-10, net_input_size=(256, 256), net_output_size=(128, 128)):
+    def __init__(self, epsilon=1e-10):
         # Network size
-        self.net_input_size = net_input_size
-        self.net_output_size = net_output_size
+        self.border_ratio = 0.5
+        self.net_input_size = (256, 256)
+        self.net_output_size = (128, 128)
         
         # To store avg. mse
         self.avg_mse = None
@@ -23,9 +24,9 @@ class Network:
         self.is_training = tf.placeholder(dtype=tf.bool, name='is_training')
 
         # Discriminator input for ground truth
-        self.x_in = tf.placeholder(tf.float32, [None, net_output_size[0], net_output_size[1], 3])
+        self.x_in = tf.placeholder(tf.float32, [None, self.net_output_size[0], self.net_output_size[1], 3])
         # Generator input for masked images 
-        self.masked_x_in = tf.placeholder(tf.float32, [None, net_input_size[0], net_input_size[1], 3])
+        self.masked_x_in = tf.placeholder(tf.float32, [None, self.net_input_size[0], self.net_input_size[1], 3])
         
         # Creat the Generator
         self.generator = self.create_generator(self.masked_x_in)
@@ -104,7 +105,7 @@ class Network:
             mse += err
         return mse / batch_size
 
-    def do_preprocessing(self, input_image=None, gt_image=None, mask=None, border_ratio=1.0, net_input_size=(256, 256), net_output_size=(128, 128)):
+    def do_preprocessing(self, input_image=None, gt_image=None, mask=None):
         # Clean values
         mask[np.where((mask<=[125,125,125]).all(axis=2))] = 0
         mask[np.where((mask>[125,125,125]).all(axis=2))] = 255
@@ -116,22 +117,22 @@ class Network:
         # Mask the areas that should be inpainted by setting them to [255, 255, 255]
         border_imge[np.where((mask==[255, 255, 255]).all(axis=2))] = [255, 255, 255]
         # Create image with white border
-        border = int(input_image.shape[1] * border_ratio)
+        border = int(input_image.shape[1] * self.border_ratio)
         border_imge = cv2.copyMakeBorder(border_imge, top=border, bottom=border, left=border, right=border, borderType= cv2.BORDER_CONSTANT, value=[255, 255, 255])
         
         inputs = []
         for c in contours:
             x, y, w, h = cv2.boundingRect(c)
             if gt_image is not None:
-                gt_image = (cv2.resize(gt_image[y: y + h, x: x + w], net_output_size) / 127.5) - 1.0
+                gt_image = (cv2.resize(gt_image[y: y + h, x: x + w], self.net_output_size) / 127.5) - 1.0
             inputs.append(
                 [
                     [ # Inner boundary
                         [x, y], # Top-left corner
                         [x + w, y + h] # Bottom-right corner
                     ],
-                    [gt_image], # Ground through
-                    [(cv2.resize(border_imge[y - int(h * border_ratio) + border: y + h + int(h * border_ratio) + border, x - int(w * border_ratio) + border: x + w + int(w * border_ratio) + border], net_input_size) / 127.5) - 1.0] # Network input
+                    gt_image, # Ground through
+                    (cv2.resize(border_imge[y - int(h * self.border_ratio) + border: y + h + int(h * self.border_ratio) + border, x - int(w * self.border_ratio) + border: x + w + int(w * self.border_ratio) + border], self.net_input_size) / 127.5) - 1.0 # Network input
                 ]
             )
         return inputs
@@ -141,7 +142,7 @@ class Network:
         image[roi[0][1]: roi[1][1], roi[0][0]: roi[1][0]] = ((prediction_image + 1) * 127.5).astype(np.uint8)
         return image
 
-    def train(self, images=[], iterations=50000, batch_size=1, weights_path='./weights/weights.ckpt.index', saving_iterations=1000, mse_interrupt=9999999, min_rectangle_ratio=0.1, max_rectangle_ratio=0.3, border_ratio=1.0):
+    def train(self, images=[], iterations=50000, batch_size=1, weights_path='./weights/weights.ckpt.index', saving_iterations=1000, mse_interrupt=9999999, min_rectangle_ratio=0.1, max_rectangle_ratio=0.3):
         saver = tf.train.Saver()
         iteration = 0
         while iteration <= iterations or mse_interrupt <= self.avg_mse:
@@ -155,14 +156,15 @@ class Network:
             # Now we fill the batches with n random tiles
             batch_idx = 0
             for index in np.random.randint(0, len(images), [batch_size]):
-                # Create a random mask with one rectangle
-                random_mask = np.zeros([images[index].shape[0], images[index].shape[1]])
+                # Create a random mask with one rectangles
+                image = cv2.imread(images[index], 3)
+                random_mask = np.zeros([image.shape[0], image.shape[1]])
                 random_mask = np.dstack((random_mask, random_mask, random_mask)).astype(np.uint8)
-                w, h = np.random.randint(int(images[index].shape[1] * min_rectangle_ratio), int(images[index].shape[1] * max_rectangle_ratio)), np.random.randint(int(images[index].shape[0] * min_rectangle_ratio), int(images[index].shape[0] * max_rectangle_ratio))
-                x, y = np.random.randint(w * border_ratio, int(images[index].shape[1] - (w * border_ratio * 2))), np.random.randint(h * border_ratio, int(images[index].shape[0] - (h * border_ratio * 2)))
+                w, h = np.random.randint(int(image.shape[1] * min_rectangle_ratio), int(image.shape[1] * max_rectangle_ratio)), np.random.randint(int(image.shape[0] * min_rectangle_ratio), int(image.shape[0] * max_rectangle_ratio))
+                x, y = np.random.randint(w * self.border_ratio, int(image.shape[1] - (w * self.border_ratio * 2))), np.random.randint(h * self.border_ratio, int(image.shape[0] - (h * self.border_ratio * 2)))
                 cv2.rectangle(random_mask, (x, y), (x + w, y + h), (255, 255, 255), -1)
                 # Preprocess input
-                processed_data = self.do_preprocessing(input_image=deepcopy(images[index]), gt_image=deepcopy(images[index]), mask=random_mask, border_ratio=border_ratio, net_input_size=self.net_input_size, net_output_size=self.net_output_size)
+                processed_data = self.do_preprocessing(input_image=deepcopy(image), gt_image=deepcopy(image), mask=random_mask)
                 # Add to batch
                 masked_batch[batch_idx] = processed_data[0][2][0]
                 ground_truth_batch[batch_idx] = processed_data[0][1][0]
@@ -193,14 +195,14 @@ class Network:
             # Increase iteration counter
             iteration += 1
 
-    def predict(self, image, mask, border_ratio=1.0):
+    def predict(self, image, mask):
         # Preprocess input
-        processed_data = self.do_preprocessing(input_image=deepcopy(image), mask=mask, border_ratio=border_ratio, net_input_size=self.net_input_size, net_output_size=self.net_output_size)
+        processed_data = self.do_preprocessing(input_image=deepcopy(image), mask=mask)
         if len(processed_data) > 0:
             # Create a batch with the masked image 
             input_image_masked = np.zeros([len(processed_data), self.net_input_size[0], self.net_input_size[1], 3])
             for prob in processed_data:
-                input_image_masked[0, :, :, :] = prob[2][0]
+                input_image_masked[0, :, :, :] = prob[2]
             # Let the Generator create a prediction
             predicted_image = self.sess.run(self.generator, feed_dict={self.masked_x_in: input_image_masked, self.is_training: False})
             # Undo the preprocessing to get BGR image with normal color range

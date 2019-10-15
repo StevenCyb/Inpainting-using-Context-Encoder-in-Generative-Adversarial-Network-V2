@@ -6,7 +6,7 @@ Moreover the network is more similar against the original paper [Context Encoder
 The following figure shows the new pre- and post-processing approach.
 At the beginning of the training a random mask with rectangles is created, which are indicated in *point 1* by the green borders. 
 Regardless of whether it is the training or the prediction, the input image is masked so that the areas to be reconstructed are white. 
-In addition, the contours on the mask are detected using Chain Approx Simple and extended by a factor of *0.5* (can be defined as required), as illustrated in *point 2* by the grey borders.
+In addition, the contours on the mask are detected using Chain Approx Simple and extended by a factor of *0.5*, as illustrated in *point 2* by the grey borders.
 The extended contours allow the Region Of Interest (ROI) to be cut rectangularly from the image, scaled to 256×256 pixels and used to train the generator, see *point 3*.
 This makes the input for the generator more standardized than in the previous version.
 In the case of pre-processed input data, the semantic features are always visible on the outer side, while the area to be reconstructed is masked in the middle. 
@@ -28,9 +28,10 @@ To run training on you own dataset you need to first copy the training images in
 I recommend cropping the images so that only the area the context-encoder should learn is included, as the following figure shows.
 ![Perfect-Cut](/media/perfect_cut.png)
 Afterwards you can start the training with the following command. In this case the parameter `-mi` indicates that the training should be aborted from an average MSE of 60. If this parameter is not specified, then the parameter for the training iterations will be used instead.
-`-mirr` defines the minimum and `-marr` the maximum size of the randomly generated masks. Note that `-marr` and the extension of the ROI (parameter `-br`) together may not be greater than `1.0`.
+`-mirr` defines the minimum and `-marr` the maximum size of the randomly generated masks. Note that `-marr` and the extension of the ROI (parameter `-br`) together may not be greater than `1.0`. 
+For example, the maximum rectangle can only be 0.33, so the border on both sides and the damaged area are `0.33 * 2 + 0.33 = 0.99 < 1.0`.
 ```
-python3 train.py -mi 60 -mirr 0.45 -marr 0.5 -bs 32
+python3 train.py -mi 60 -mirr 0.1 -marr 0.33 -bs 4
 ```
 ### Run predictions
 To perform a prediction, I used the following command
