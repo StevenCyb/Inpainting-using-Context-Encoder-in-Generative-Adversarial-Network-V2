@@ -29,9 +29,9 @@ I recommend cropping the images so that only the area the context-encoder should
 ![Perfect-Cut](/media/perfect_cut.png)
 Afterwards you can start the training with the following command. In this case the parameter `-mi` indicates that the training should be aborted from an average MSE of 60. If this parameter is not specified, then the parameter for the training iterations will be used instead.
 `-mirr` defines the minimum and `-marr` the maximum size of the randomly generated masks. Note that `-marr` and the extension of the ROI (parameter `-br`) together may not be greater than `1.0`. 
-For example, the maximum rectangle can only be 0.33, so the border on both sides and the damaged area are `0.33 * 2 + 0.33 = 0.99 < 1.0`.
+For example, the maximum rectangle can only be 0.5, so the border on both sides and the damaged area are `(max_rectangle * border_ratio * 2) + damaged_area = (0.5 * 0.5 * 2) + 0.5 = 1.0 <= 1.0`.
 ```
-python3 train.py -mi 60 -mirr 0.1 -marr 0.33 -bs 4
+python3 train.py -mi 60 -mirr 0.1 -marr 0.5 -bs 4
 ```
 ### Run predictions
 To perform a prediction, I used the following command
